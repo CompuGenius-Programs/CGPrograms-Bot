@@ -1,0 +1,431 @@
+import random
+import os
+import re
+import calendar
+import time
+import emoji
+
+import discord
+import dotenv
+import youtube_dl
+import asyncio
+
+from discord.ext import commands
+
+dotenv.load_dotenv()
+token = os.getenv("TOKEN")
+
+urls = [
+#    "https://youtu.be/DWcJFNfaw9c",
+#    "https://youtu.be/7NOSDKb0HlU",
+#    "https://youtu.be/5qap5aO4i9A",
+#    "https://youtu.be/5yx6BWlEVcY",
+#    "https://youtu.be/ZYMuB9y549s",
+#    "https://youtu.be/-5KAN9_CzSA",
+#    "https://youtu.be/MCkTebktHVc",
+#    "https://youtu.be/B8tQ8RUbTW8",
+#    "https://youtu.be/kx63aT4UvDI",
+#    "https://youtu.be/52SlPeGEHVM",
+#    "https://youtu.be/mZPYu5hW-ek",
+#    "https://youtu.be/WBfbkPTqUtU",
+#    "https://youtu.be/y9L0H3488Ys",
+#    "https://youtu.be/bmVKaAV_7-A",
+#    "https://youtu.be/o_9GhB9UaMY",
+    "https://youtu.be/s49CT4DTAkw",
+    "https://youtu.be/qvUWA45GOMg",
+    "https://youtu.be/NDfF_XwNtIw",
+    "https://youtu.be/lTRiuFIWV54",
+    "https://youtu.be/wAPCSnAhhC8",
+    "https://youtu.be/-FlxM_0S2lA",
+    "https://youtu.be/Oxt4Ut_Q55I",
+    "https://youtu.be/81WBzpwK1Rk",
+    "https://youtu.be/BTYAsjAVa3I",
+    "https://youtu.be/zFhfksjf_mY",
+    "https://youtu.be/rA56B4JyTgI",
+]
+
+assignable_roles = {
+    ":video_game:": {
+        "name": "Game Designer",
+        "id": 500853492982874112,
+    }, ":world_map:": {
+        "name": "Level/Map Designer",
+        "id": 513840484175708160,
+    }, ":radio_button:": {
+        "name": "UI/UX Designer",
+        "id": 514648534939598916,
+    }, ":writing_hand:": {
+        "name": "Writer",
+        "id": 514990466652176384,
+    }, ":desktop_computer:": {
+        "name": "Programmer",
+        "id": 500349141004582922,
+    }, ":person_walking:": {
+        "name": "Animator",
+        "id": 514646088603664384,
+    }, ":ice:": {
+        "name": "3D Modeler",
+        "id": 503300166921748480,
+    }, ":artist_palette:": {
+        "name": "2D Artist",
+        "id": 500842841984073758,
+    }, ":musical_note:": {
+        "name": "Composer",
+        "id": 500853537014546453,
+    }, ":speaker_high_volume:": {
+        "name": "Audio Engineer",
+        "id": 532531272723988490,
+    }, ":hammer_and_pick:": {
+        "name": "Gamer/Tester",
+        "id": 516128704993296385,
+    },
+}
+just_chillin_role = 507517011879002112
+
+giveaways = {}
+
+music_messages = []
+giveaway_messages = []
+
+bot_channel = 776539733660139542
+admin_channel = 776539589111840779
+giveaways_channel = 776506419150454784
+chat_channel = 500124505595838475
+welcome_channel = 696414232261951508
+music_channel = 684128787180552205
+
+server = 500124505021349911
+
+# Suppress noise about console usage from errors
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ffmpeg_options = {
+    'options': '-vn'
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+
+        self.data = data
+
+        self.title = data.get('title')
+        self.url = data.get('url')
+
+    @classmethod
+    async def from_url(cls, url):
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=True))
+
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
+
+        filename = ytdl.prepare_filename(data)
+        print(filename)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+
+
+intents = discord.Intents.default()
+intents.members = True
+
+bot = commands.Bot(command_prefix='-', intents=intents)
+bot.remove_command('help')
+
+
+def create_embed(title, description, color, footer, image="", *, url="", author="", author_url=""):
+    embed = discord.Embed(title=title, description=description, url=url, color=color)
+    embed.set_footer(text=footer)
+    embed.set_thumbnail(url=image)
+    embed.set_author(name=author, url=author_url)
+    return embed
+
+
+async def add_roles(emoji_name, user):
+    role_name = assignable_roles[emoji_name]["name"]
+    role = discord.utils.get(bot.get_guild(server).roles, name=role_name)
+    just_chillin = discord.utils.get(bot.get_guild(server).roles, id=just_chillin_role)
+
+    if role in user.roles:
+        await user.send("You already have the %s role." % role.name)
+    else:
+        await user.add_roles(role, reason="User assigned role to themselves.")
+        await user.send("The %s role was successfully assigned to you." % role.name)
+
+    if just_chillin in user.roles and len(user.roles) >= 2:
+        await user.remove_roles(just_chillin, reason="User has a self-assigned role.")
+
+
+async def remove_roles(emoji_name, user):
+    role_name = assignable_roles[emoji_name]["name"]
+    role = discord.utils.get(bot.get_guild(server).roles, name=role_name)
+    just_chillin = discord.utils.get(bot.get_guild(server).roles, id=just_chillin_role)
+
+    await user.remove_roles(role, reason="User removed role from themselves.")
+    await user.send("The %s role was successfully removed from you." % role.name)
+
+    if just_chillin not in user.roles and len(user.roles) <= 1:
+        await user.add_roles(just_chillin, reason="User has no self-assigned roles.")
+
+
+async def get_url():
+    url = random.choice(urls)
+    try:
+        player = await YTDLSource.from_url(url)
+        return player, url
+    except youtube_dl.utils.DownloadError or youtube_dl.utils.ExtractorError:
+        urls.remove(url)
+        await bot.get_channel(admin_channel).send("**<@496392770374860811> BAD MUSIC URL:** *%s*" % url)
+        return await get_url()
+
+
+async def get_new_winner(giveaway_members, winner_ids):
+    winner_id = random.choice(giveaway_members)
+    not_new_winner = winner_id in winner_ids
+    while not_new_winner:
+        return await get_new_winner(giveaway_members, winner_ids)
+    return winner_id
+
+
+async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_amount):
+    await asyncio.sleep(time_in_seconds)
+
+    winner_ids = []
+    giveaway_members = giveaways[prize]
+    if winners_amount >= len(giveaway_members):
+        for winner in giveaway_members:
+            winner_ids.append(winner)
+    else:
+        for winner in range(winners_amount):
+            winner_id = await get_new_winner(giveaway_members, winner_ids)
+            winner_ids.append(winner_id)
+
+    winners = []
+    for winner_id in winner_ids:
+        winners.append("<@%s>" % winner_id)
+
+    description = '''
+    The giveaway is over!
+    Congrats to the winners:
+    %s
+    ''' % ('\n'.join(winners))
+
+    embed = create_embed(title=":alarm_clock: GIVEAWAY OVER :alarm_clock:", description=description,
+                         color=discord.Color.green(),
+                         footer="Thanks to all who entered and didn't win. Better luck next time!", author=prize)
+    await giveaway_message.edit(embed=embed)
+
+    giveaway_messages.remove(giveaway_message)
+
+
+@bot.command()
+async def help(ctx):
+    description = '''
+    A bot created by <@496392770374860811> for his server.
+
+    • Add roles to yourself in <#%s>
+    • Join the 🎶-Music voice chat to listen to lofi beats while programming and studying.
+    • Look out for giveaways in <#%s>
+
+    -links | Lists important links
+    -help | Displays this message
+    ''' % (welcome_channel, giveaways_channel)
+
+    embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
+                         image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
+                         footer="© CompuGenius Programs. All rights reserved.")
+    await ctx.send(embed=embed)
+
+
+async def send_roles():
+    display_roles = []
+
+    for role in assignable_roles:
+        display_roles.append("%s - %s" % (emoji.emojize(role), assignable_roles[role]["name"]))
+
+    description = '''
+    Click the reactions below corresponding to the roles you want.
+
+    %s
+    ''' % '\n'.join(display_roles)
+
+    embed = create_embed(title="Add roles", description=description, color=discord.Color.blurple(),
+                         footer="© CompuGenius Programs. All rights reserved.")
+    msg = await bot.get_channel(welcome_channel).send(embed=embed)
+
+    for role in assignable_roles:
+        await msg.add_reaction(emoji.emojize(role))
+
+
+@bot.command()
+async def links(ctx):
+    description = '''
+    **Website:** *<https://www.cgprograms.com>*
+    **Discord:** *<https://discord.gg/4gc5fQf>*
+    '''
+
+    embed = create_embed(title="Important CompuGenius Programs Links", description=description,
+                         color=discord.Color.purple(), footer="© CompuGenius Programs. All rights reserved.",
+                         image="https://www.cgprograms.com/images/logo.png",
+                         author="CompuGenius Programs", author_url="https://www.cgprograms.com")
+
+    await bot.get_channel(bot_channel).send(embed=embed)
+
+
+@bot.command()
+@commands.has_role('Admin')
+async def giveaway(ctx, prize: str, winners: int, duration: str, *, url: str = "", image=""):
+    if winners > 1:
+        description = '''
+        Click the :tada: to be entered into a giveaway!
+        There are %d winners!
+        ''' % (winners)
+    elif winners == 1:
+        description = '''
+        Click the :tada: to be entered into a giveaway!
+        There is %d winner!
+        ''' % (winners)
+    else:
+        await ctx.send("ERROR! Must have at least 1 winner!")
+        return
+
+    days, hours, minutes = [int(x) if x else 0 for x in re.match('(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?',
+                                                                 duration).groups()]
+
+    epoch_time = calendar.timegm(time.gmtime())
+
+    duration_in_seconds = (int(days) * 24 * 60 * 60) + (int(hours) * 60 * 60) + (int(minutes) * 60)
+    giveaway_ends_in_seconds = epoch_time + duration_in_seconds
+    giveaway_ends_in_date = time.strftime("%b %dth", time.localtime(giveaway_ends_in_seconds))
+    giveaway_ends_in_time = time.strftime("%I:%M%p", time.localtime(giveaway_ends_in_seconds))
+
+    footer = '''
+    Giveaway ends on %s at %s.
+    ''' % (giveaway_ends_in_date, giveaway_ends_in_time)
+
+    if not url:
+        author_url = ""
+    if not image:
+        image = ""
+
+    embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
+                         color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=author_url)
+    msg = await bot.get_channel(giveaways_channel).send(embed=embed)
+    await msg.add_reaction("🎉")
+
+    giveaway_messages.append((msg))
+
+    giveaways[prize] = []
+    await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=msg, prize=prize,
+                             winners_amount=winners)
+
+
+@bot.event
+async def on_ready():
+    print('Logged in as')
+    print(bot.user.name)
+    print(bot.user.id)
+    print('------')
+
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing,
+                                                        name="Managing the CompuGenius Programs server. Type -help."))
+
+    await send_roles()
+
+
+@bot.event
+async def on_reaction_add(reaction, user):
+    emoji_name = emoji.demojize(reaction.emoji)
+
+    if not user.bot:
+        if reaction.message in giveaway_messages:
+            if emoji_name == ":party_popper:":
+                giveaway_members = giveaways[reaction.message.embeds[0].author.name]
+                giveaway_members.append(user.id)
+
+        elif reaction.message.channel == bot.get_channel(welcome_channel) and reaction.message.author == bot.user:
+            if emoji_name in assignable_roles:
+                await add_roles(emoji_name, user)
+
+
+@bot.event
+async def on_reaction_remove(reaction, user):
+    emoji_name = emoji.demojize(reaction.emoji)
+
+    if not user.bot:
+        if reaction.message in giveaway_messages:
+            if emoji_name == ":party_popper:":
+                giveaway_members = giveaways[reaction.message.embeds[0].author.name]
+                giveaway_members.remove(user.id)
+
+        elif reaction.message.channel == bot.get_channel(welcome_channel) and reaction.message.author == bot.user:
+            if emoji_name in assignable_roles:
+                await remove_roles(emoji_name, user)
+
+
+@bot.event
+async def on_member_join(member):
+    description = '''
+    Welcome %s to the %s server!
+    Please make sure to check out <#%d>.
+    Enjoy your stay!
+    ''' % (member.mention, bot.get_guild(server).name, welcome_channel)
+
+    embed = create_embed(title="Welcome %s!" % member.display_name, description=description, color=discord.Color.blue(),
+                         footer="© CompuGenius Programs. All rights reserved.", image=member.avatar_url)
+    await bot.get_channel(chat_channel).send(embed=embed)
+
+    role = discord.utils.get(bot.get_guild(server).roles, id=just_chillin_role)
+    await member.add_roles(role, reason="New member joined.")
+
+
+async def play(voice_client):
+    for message in music_messages:
+        await message.delete()
+        music_messages.remove(message)
+
+    player, url = await get_url()
+
+    if voice_client and not voice_client.is_playing() and voice_client.is_connected():
+        async with bot.get_channel(bot_channel).typing():
+            voice_client.play(player, after=lambda e: bot.loop.create_task(play(voice_client)))
+        msg = await bot.get_channel(bot_channel).send("**Playing now:** *%s*" % url)
+        music_messages.append(msg)
+
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    music_voice_channel = bot.get_channel(music_channel)
+    voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
+    if after.channel == music_voice_channel:
+        if voice_client is None:
+            await music_voice_channel.connect()
+
+        await play(voice_client)
+
+    if len(music_voice_channel.members) <= 1:
+        if voice_client and voice_client.is_connected():
+            await voice_client.disconnect()
+            for message in music_messages:
+                await message.delete()
+                music_messages.remove(message)
+
+
+bot.run(token)
