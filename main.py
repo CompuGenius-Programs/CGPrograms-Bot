@@ -291,7 +291,7 @@ async def links(ctx):
 
 @bot.command()
 @commands.has_role('Admin')
-async def giveaway(ctx, prize: str, winners: int, duration: str, *, url: str = "", image=""):
+async def giveaway(ctx, prize: str, winners: int, duration: str, url: str="", image: str=""):
     if winners > 1:
         description = '''
         Click the :tada: to be entered into a giveaway!
@@ -312,6 +312,11 @@ async def giveaway(ctx, prize: str, winners: int, duration: str, *, url: str = "
     epoch_time = calendar.timegm(time.gmtime())
 
     duration_in_seconds = (int(days) * 24 * 60 * 60) + (int(hours) * 60 * 60) + (int(minutes) * 60)
+
+    if duration_in_seconds < 60:
+        await ctx.send("ERROR! Must be at least a minute long!")
+        return
+
     giveaway_ends_in_seconds = epoch_time + duration_in_seconds
     giveaway_ends_in_date = time.strftime("%b %dth", time.localtime(giveaway_ends_in_seconds))
     giveaway_ends_in_time = time.strftime("%I:%M%p", time.localtime(giveaway_ends_in_seconds))
@@ -320,13 +325,11 @@ async def giveaway(ctx, prize: str, winners: int, duration: str, *, url: str = "
     Giveaway ends on %s at %s.
     ''' % (giveaway_ends_in_date, giveaway_ends_in_time)
 
-    if not url:
-        author_url = ""
-    if not image:
-        image = ""
+    url = url if url else ""
+    image = image if image else ""
 
     embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
-                         color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=author_url)
+                         color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=url)
     msg = await bot.get_channel(giveaways_channel).send(embed=embed)
     await msg.add_reaction("🎉")
 
