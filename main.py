@@ -16,32 +16,8 @@ dotenv.load_dotenv()
 token = os.getenv("TOKEN")
 
 urls = [
-#    "https://youtu.be/DWcJFNfaw9c",
-#    "https://youtu.be/7NOSDKb0HlU",
-#    "https://youtu.be/5qap5aO4i9A",
-#    "https://youtu.be/5yx6BWlEVcY",
-#    "https://youtu.be/ZYMuB9y549s",
-#    "https://youtu.be/-5KAN9_CzSA",
-#    "https://youtu.be/MCkTebktHVc",
-#    "https://youtu.be/B8tQ8RUbTW8",
-#    "https://youtu.be/kx63aT4UvDI",
-#    "https://youtu.be/52SlPeGEHVM",
-#    "https://youtu.be/mZPYu5hW-ek",
-#    "https://youtu.be/WBfbkPTqUtU",
-#    "https://youtu.be/y9L0H3488Ys",
-#    "https://youtu.be/bmVKaAV_7-A",
-#    "https://youtu.be/o_9GhB9UaMY",
-    "https://youtu.be/s49CT4DTAkw",
-    "https://youtu.be/qvUWA45GOMg",
-    "https://youtu.be/NDfF_XwNtIw",
-    "https://youtu.be/lTRiuFIWV54",
-    "https://youtu.be/wAPCSnAhhC8",
-    "https://youtu.be/-FlxM_0S2lA",
-    "https://youtu.be/Oxt4Ut_Q55I",
-    "https://youtu.be/81WBzpwK1Rk",
-    "https://youtu.be/BTYAsjAVa3I",
-    "https://youtu.be/zFhfksjf_mY",
-    "https://youtu.be/rA56B4JyTgI",
+    "https://youtu.be/_DYAnU3H7RI",
+    "https://youtu.be/45V-QQe2a8Y",
 ]
 
 assignable_roles = {
@@ -139,7 +115,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = ytdl.prepare_filename(data)
-        print(filename)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
@@ -347,38 +322,46 @@ async def on_ready():
     print(bot.user.id)
     print('------')
 
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing,
-                                                        name="Managing the CompuGenius Programs server. Type -help."))
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
+                                                        name="the CompuGenius Programs server. Type -help."))
 
-    await send_roles()
+    #await send_roles()
 
 
 @bot.event
-async def on_reaction_add(reaction, user):
-    emoji_name = emoji.demojize(reaction.emoji)
+async def on_raw_reaction_add(payload):
+    emoji_name = emoji.demojize(payload.emoji.name)
+    channel = bot.get_channel(payload.channel_id)
+    guild = bot.get_guild(payload.guild_id)
+    user = guild.get_member(payload.user_id)
 
-    if not user.bot:
-        if reaction.message in giveaway_messages:
+    if not user.id == 516792910990016515:
+        message = await channel.fetch_message(payload.message_id)
+        if message in giveaway_messages:
             if emoji_name == ":party_popper:":
                 giveaway_members = giveaways[reaction.message.embeds[0].author.name]
                 giveaway_members.append(user.id)
 
-        elif reaction.message.channel == bot.get_channel(welcome_channel) and reaction.message.author == bot.user:
+        elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
             if emoji_name in assignable_roles:
                 await add_roles(emoji_name, user)
 
 
 @bot.event
-async def on_reaction_remove(reaction, user):
-    emoji_name = emoji.demojize(reaction.emoji)
+async def on_raw_reaction_remove(payload):
+    emoji_name = emoji.demojize(payload.emoji.name)
+    channel = bot.get_channel(payload.channel_id)
+    guild = bot.get_guild(payload.guild_id)
+    user = guild.get_member(payload.user_id)
 
-    if not user.bot:
-        if reaction.message in giveaway_messages:
+    if not user.id == 516792910990016515:
+        message = await channel.fetch_message(payload.message_id)
+        if message in giveaway_messages:
             if emoji_name == ":party_popper:":
                 giveaway_members = giveaways[reaction.message.embeds[0].author.name]
                 giveaway_members.remove(user.id)
 
-        elif reaction.message.channel == bot.get_channel(welcome_channel) and reaction.message.author == bot.user:
+        elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
             if emoji_name in assignable_roles:
                 await remove_roles(emoji_name, user)
 
@@ -417,7 +400,7 @@ async def play(voice_client):
 async def on_voice_state_update(member, before, after):
     music_voice_channel = bot.get_channel(music_channel)
     voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
-    if after.channel == music_voice_channel:
+    if after.channel == music_voice_channel and before.channel != music_voice_channel:
         if voice_client is None:
             await music_voice_channel.connect()
 
