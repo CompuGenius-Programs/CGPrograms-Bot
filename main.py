@@ -12,6 +12,9 @@ import asyncio
 
 from discord.ext import commands
 
+from discord_slash import SlashCommand
+from discord_slash import SlashContext
+
 dotenv.load_dotenv()
 token = os.getenv("TOKEN")
 
@@ -118,11 +121,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-intents = discord.Intents.default()
-intents.members = True
-
-bot = commands.Bot(command_prefix='-', intents=intents)
+bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
 bot.remove_command('help')
+slash = SlashCommand(bot, auto_register=True, auto_delete=True)
 
 
 def create_embed(title, description, color, footer, image="", *, url="", author="", author_url=""):
@@ -210,8 +211,8 @@ async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_a
     giveaway_messages.remove(giveaway_message)
 
 
-@bot.command()
-async def help(ctx):
+@slash.slash(name="help")#, guild_ids=[server])
+async def help(ctx: SlashContext):
     description = '''
     A bot created by <@496392770374860811> for his server.
 
@@ -226,14 +227,16 @@ async def help(ctx):
     embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
                          image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
                          footer="© CompuGenius Programs. All rights reserved.")
-    await ctx.send(embed=embed)
+    await ctx.send(embeds=[embed])
 
 
-async def send_roles():
+#@slash.slash(name="send_roles")#, guild_ids=[server])
+#@commands.has_role('Admin')
+async def send_roles(ctx: SlashContext):
     display_roles = []
 
     for role in assignable_roles:
-        display_roles.append("%s - %s" % (emoji.emojize(role), assignable_roles[role]["name"]))
+        display_roles.append("%s    -   %s" % (emoji.emojize(role), assignable_roles[role]["name"]))
 
     description = '''
     Click the reactions below corresponding to the roles you want.
@@ -249,8 +252,8 @@ async def send_roles():
         await msg.add_reaction(emoji.emojize(role))
 
 
-@bot.command()
-async def links(ctx):
+@slash.slash(name="links")#, guild_ids=[server])
+async def links(ctx: SlashContext):
     description = '''
     **Website:** *<https://www.cgprograms.com>*
     **Discord:** *<https://discord.gg/4gc5fQf>*
@@ -264,9 +267,9 @@ async def links(ctx):
     await bot.get_channel(bot_channel).send(embed=embed)
 
 
-@bot.command()
+@slash.slash(name="giveaway")#, guild_ids=[server])
 @commands.has_role('Admin')
-async def giveaway(ctx, prize: str, winners: int, duration: str, url: str="", image: str=""):
+async def giveaway(ctx: SlashContext, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
     if winners > 1:
         description = '''
         Click the :tada: to be entered into a giveaway!
@@ -325,11 +328,12 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
                                                         name="the CompuGenius Programs server. Type -help."))
 
-    #await send_roles()
+    # await send_roles()
 
 
 @bot.event
 async def on_raw_reaction_add(payload):
+    reaction = payload.emoji
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
     guild = bot.get_guild(payload.guild_id)
@@ -349,6 +353,7 @@ async def on_raw_reaction_add(payload):
 
 @bot.event
 async def on_raw_reaction_remove(payload):
+    reaction = payload.emoji
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
     guild = bot.get_guild(payload.guild_id)

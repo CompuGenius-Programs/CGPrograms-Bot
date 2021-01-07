@@ -5,3 +5,4 @@ youtube_dl
 asyncio
 emoji
 python-dotenv
+discord-py-slash-command
