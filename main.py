@@ -222,8 +222,8 @@ async def _help(ctx: SlashContext):
     • Join the 🎶-Music voice chat to listen to lofi beats while programming and studying.
     • Look out for giveaways in <#%s>
 
-    -links | Lists important links
-    -help | Displays this message
+    /links | Lists important links
+    /help | Displays this message
     ''' % (welcome_channel, giveaways_channel)
 
     embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
@@ -235,8 +235,7 @@ async def _help(ctx: SlashContext):
         await bot.get_channel(bot_channel).send(embed=embed)
 
 
-# @slash.slash(name="send_roles")
-async def send_roles(ctx: SlashContext):
+async def send_roles():
     display_roles = []
 
     for role in assignable_roles:
@@ -345,9 +344,9 @@ async def on_ready():
     print('------')
 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
-                                                        name="the CompuGenius Programs server. Type -help."))
+                                                        name="the CompuGenius Programs server. Type /help."))
 
-    # await send_roles()
+#    await send_roles()
 
 
 @bot.event
