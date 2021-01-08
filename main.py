@@ -324,7 +324,11 @@ async def giveaway(ctx: SlashContext, prize: str, winners: int, duration: str, u
 
         embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
                              color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=url)
-        msg = await bot.get_channel(giveaways_channel).send(embed=embed)
+
+        if ctx.channel == bot.get_channel(testing_channel):
+            msg = await bot.get_channel(testing_channel).send(embed=embed)
+        else:
+            msg = await bot.get_channel(giveaways_channel).send(embed=embed)
         await msg.add_reaction("🎉")
 
         giveaway_messages.append(msg)
