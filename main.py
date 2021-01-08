@@ -14,6 +14,7 @@ from discord.ext import commands
 
 from discord_slash import SlashCommand
 from discord_slash import SlashContext
+from discord_slash.utils import manage_commands
 
 dotenv.load_dotenv()
 token = os.getenv("TOKEN")
@@ -67,6 +68,7 @@ music_messages = []
 giveaway_messages = []
 
 bot_channel = 776539733660139542
+testing_channel = 784240185713098773
 admin_channel = 776539589111840779
 giveaways_channel = 776506419150454784
 chat_channel = 500124505595838475
@@ -109,15 +111,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url):
-        loop = asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=True))
+    async def from_url(cls, url, *, loop=None, stream=True):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
             # take first item from a playlist
             data = data['entries'][0]
 
-        filename = ytdl.prepare_filename(data)
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
@@ -211,8 +213,8 @@ async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_a
     giveaway_messages.remove(giveaway_message)
 
 
-@slash.slash(name="help")#, guild_ids=[server])
-async def help(ctx: SlashContext):
+@slash.slash(name="help", description="Get help for using the bot.")
+async def _help(ctx: SlashContext):
     description = '''
     A bot created by <@496392770374860811> for his server.
 
@@ -227,11 +229,13 @@ async def help(ctx: SlashContext):
     embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
                          image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
                          footer="© CompuGenius Programs. All rights reserved.")
-    await ctx.send(embeds=[embed])
+    if ctx.channel == bot.get_channel(testing_channel):
+        await bot.get_channel(testing_channel).send(embed=embed)
+    else:
+        await bot.get_channel(bot_channel).send(embed=embed)
 
 
-#@slash.slash(name="send_roles")#, guild_ids=[server])
-#@commands.has_role('Admin')
+# @slash.slash(name="send_roles")
 async def send_roles(ctx: SlashContext):
     display_roles = []
 
@@ -252,7 +256,7 @@ async def send_roles(ctx: SlashContext):
         await msg.add_reaction(emoji.emojize(role))
 
 
-@slash.slash(name="links")#, guild_ids=[server])
+@slash.slash(name="links", description="List important CompuGenius Programs links.")
 async def links(ctx: SlashContext):
     description = '''
     **Website:** *<https://www.cgprograms.com>*
@@ -264,58 +268,73 @@ async def links(ctx: SlashContext):
                          image="https://www.cgprograms.com/images/logo.png",
                          author="CompuGenius Programs", author_url="https://www.cgprograms.com")
 
-    await bot.get_channel(bot_channel).send(embed=embed)
-
-
-@slash.slash(name="giveaway")#, guild_ids=[server])
-@commands.has_role('Admin')
-async def giveaway(ctx: SlashContext, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
-    if winners > 1:
-        description = '''
-        Click the :tada: to be entered into a giveaway!
-        There are %d winners!
-        ''' % (winners)
-    elif winners == 1:
-        description = '''
-        Click the :tada: to be entered into a giveaway!
-        There is %d winner!
-        ''' % (winners)
+    if ctx.channel == bot.get_channel(testing_channel):
+        await bot.get_channel(testing_channel).send(embed=embed)
     else:
-        await ctx.send("ERROR! Must have at least 1 winner!")
-        return
+        await bot.get_channel(bot_channel).send(embed=embed)
 
-    days, hours, minutes = [int(x) if x else 0 for x in re.match('(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?',
-                                                                 duration).groups()]
 
-    epoch_time = calendar.timegm(time.gmtime())
+@slash.slash(name="giveaway", description="Start a giveaway!", options=[
+    manage_commands.create_option(name="prize", description="The prize as a string.", option_type=3, required=True),
+    manage_commands.create_option(name="winners", description="The amount of winners as an int.", option_type=3,
+                                  required=True),
+    manage_commands.create_option(name="duration", description="The duration as a string with time letters (d,h,m).",
+                                  option_type=3, required=True),
+    manage_commands.create_option(name="url", description="The url to the prize as a string.", option_type=3,
+                                  required=False),
+    manage_commands.create_option(name="image", description="The url to the image of the prize as a string.",
+                                  option_type=3, required=False),
+])
+async def giveaway(ctx: SlashContext, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
+    if discord.utils.get(bot.get_guild(server).roles, name="Admin") in ctx.author.roles:
+        if winners > 1:
+            description = '''
+            Click the :tada: to be entered into a giveaway!
+            There are %d winners!
+            ''' % winners
+        elif winners == 1:
+            description = '''
+            Click the :tada: to be entered into a giveaway!
+            There is %d winner!
+            ''' % winners
+        else:
+            await ctx.send(content="ERROR! Must have at least 1 winner!")
+            return
 
-    duration_in_seconds = (int(days) * 24 * 60 * 60) + (int(hours) * 60 * 60) + (int(minutes) * 60)
+        days, hours, minutes = [int(x) if x else 0 for x in re.match('(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?',
+                                                                     duration).groups()]
 
-    if duration_in_seconds < 60:
-        await ctx.send("ERROR! Must be at least a minute long!")
-        return
+        epoch_time = calendar.timegm(time.gmtime())
 
-    giveaway_ends_in_seconds = epoch_time + duration_in_seconds
-    giveaway_ends_in_date = time.strftime("%b %dth", time.localtime(giveaway_ends_in_seconds))
-    giveaway_ends_in_time = time.strftime("%I:%M%p", time.localtime(giveaway_ends_in_seconds))
+        duration_in_seconds = (int(days) * 24 * 60 * 60) + (int(hours) * 60 * 60) + (int(minutes) * 60)
 
-    footer = '''
-    Giveaway ends on %s at %s.
-    ''' % (giveaway_ends_in_date, giveaway_ends_in_time)
+        if duration_in_seconds < 60:
+            await ctx.send(content="ERROR! Must be at least a minute long!")
+            return
 
-    url = url if url else ""
-    image = image if image else ""
+        giveaway_ends_in_seconds = epoch_time + duration_in_seconds
+        giveaway_ends_in_date = time.strftime("%b %dth", time.localtime(giveaway_ends_in_seconds))
+        giveaway_ends_in_time = time.strftime("%I:%M%p", time.localtime(giveaway_ends_in_seconds))
 
-    embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
-                         color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=url)
-    msg = await bot.get_channel(giveaways_channel).send(embed=embed)
-    await msg.add_reaction("🎉")
+        footer = '''
+        Giveaway ends on %s at %s.
+        ''' % (giveaway_ends_in_date, giveaway_ends_in_time)
 
-    giveaway_messages.append((msg))
+        url = url if url else ""
+        image = image if image else ""
 
-    giveaways[prize] = []
-    await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=msg, prize=prize,
-                             winners_amount=winners)
+        embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
+                             color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=url)
+        msg = await bot.get_channel(giveaways_channel).send(embed=embed)
+        await msg.add_reaction("🎉")
+
+        giveaway_messages.append(msg)
+
+        giveaways[prize] = []
+        await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=msg, prize=prize,
+                                 winners_amount=winners)
+    else:
+        await ctx.send(content="You do not have permission to create a giveaway!")
 
 
 @bot.event
