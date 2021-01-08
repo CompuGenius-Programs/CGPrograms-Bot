@@ -286,6 +286,7 @@ async def links(ctx: SlashContext):
 ])
 async def giveaway(ctx: SlashContext, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
     if discord.utils.get(bot.get_guild(server).roles, name="Admin") in ctx.author.roles:
+        winners = int(winners)
         if winners > 1:
             description = '''
             Click the :tada: to be entered into a giveaway!
@@ -355,7 +356,6 @@ async def on_ready():
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    reaction = payload.emoji
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
     guild = bot.get_guild(payload.guild_id)
@@ -365,7 +365,7 @@ async def on_raw_reaction_add(payload):
         message = await channel.fetch_message(payload.message_id)
         if message in giveaway_messages:
             if emoji_name == ":party_popper:":
-                giveaway_members = giveaways[reaction.message.embeds[0].author.name]
+                giveaway_members = giveaways[message.embeds[0].author.name]
                 giveaway_members.append(user.id)
 
         elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
@@ -375,7 +375,6 @@ async def on_raw_reaction_add(payload):
 
 @bot.event
 async def on_raw_reaction_remove(payload):
-    reaction = payload.emoji
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
     guild = bot.get_guild(payload.guild_id)
@@ -385,7 +384,7 @@ async def on_raw_reaction_remove(payload):
         message = await channel.fetch_message(payload.message_id)
         if message in giveaway_messages:
             if emoji_name == ":party_popper:":
-                giveaway_members = giveaways[reaction.message.embeds[0].author.name]
+                giveaway_members = giveaways[message.embeds[0].author.name]
                 giveaway_members.remove(user.id)
 
         elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
