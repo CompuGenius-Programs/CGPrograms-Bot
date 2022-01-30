@@ -1,17 +1,15 @@
-import random
-import os
-import re
+import asyncio
 import calendar
+import os
+import random
+import re
 import time
-import emoji
 
 import discord
 import dotenv
+import emoji
 import youtube_dl
-import asyncio
-
 from discord.ext import commands
-
 from discord_slash import SlashCommand
 from discord_slash import SlashContext
 from discord_slash.utils import manage_commands
@@ -21,7 +19,12 @@ token = os.getenv("TOKEN")
 
 urls = [
     "https://youtu.be/_DYAnU3H7RI",
+    "https://youtu.be/HFT4mQwat_4",
+    "https://youtu.be/ESe5OWELD2I",
     "https://youtu.be/45V-QQe2a8Y",
+    "https://youtu.be/uhs75RvA8S0",
+    "https://youtu.be/XdvOIQ3_irk",
+    "https://youtu.be/1k9MqmB4wO0"
 ]
 
 assignable_roles = {
@@ -77,6 +80,8 @@ music_channel = 684128787180552205
 
 server = 500124505021349911
 
+bot_id = 516792910990016515
+
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -125,7 +130,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
 bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
 bot.remove_command('help')
-slash = SlashCommand(bot, auto_register=True, auto_delete=True)
+slash = SlashCommand(bot)
 
 
 def create_embed(title, description, color, footer, image="", *, url="", author="", author_url=""):
@@ -219,7 +224,7 @@ async def _help(ctx: SlashContext):
     A bot created by <@496392770374860811> for his server.
 
     • Add roles to yourself in <#%s>
-    • Join the 🎶-Music voice chat to listen to lofi beats while programming and studying.
+    • Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
     • Look out for giveaways in <#%s>
 
     /links | Lists important links
@@ -235,7 +240,9 @@ async def _help(ctx: SlashContext):
         await bot.get_channel(bot_channel).send(embed=embed)
 
 
-async def send_roles():
+@bot.command()
+@commands.has_role(762718582006087720)
+async def send_roles(ctx):
     display_roles = []
 
     for role in assignable_roles:
@@ -258,8 +265,16 @@ async def send_roles():
 @slash.slash(name="links", description="List important CompuGenius Programs links.")
 async def links(ctx: SlashContext):
     description = '''
+    __CompuGenius Programs__
     **Website:** *<https://www.cgprograms.com>*
     **Discord:** *<https://discord.gg/4gc5fQf>*
+    **Twitter:** *<https://twitter.com/CompuGeniusCode>*
+    
+    __Scifyre League__
+    **Website:** https://scifyre.cgprograms.com
+    **Steam:** *<https://store.steampowered.com/app/1313660>*
+    **Discord:** *<https://discord.gg/F9xykMJ>*
+    **Twitter:** *<https://twitter.com/ScifyreLeague>*
     '''
 
     embed = create_embed(title="Important CompuGenius Programs Links", description=description,
@@ -351,8 +366,6 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
                                                         name="the CompuGenius Programs server. Type /help."))
 
-#    await send_roles()
-
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -408,16 +421,18 @@ async def on_member_join(member):
     await member.add_roles(role, reason="New member joined.")
 
 
-async def play(voice_client):
-    for message in music_messages:
-        await message.delete()
-        music_messages.remove(message)
-
+async def play():
     player, url = await get_url()
 
+    voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
+
     if voice_client and not voice_client.is_playing() and voice_client.is_connected():
+        for message in music_messages:
+            await message.delete()
+            music_messages.remove(message)
+
         async with bot.get_channel(bot_channel).typing():
-            voice_client.play(player, after=lambda e: bot.loop.create_task(play(voice_client)))
+            voice_client.play(player, after=lambda e: bot.loop.create_task(play()))
         msg = await bot.get_channel(bot_channel).send("**Playing now:** *%s*" % url)
         music_messages.append(msg)
 
@@ -426,11 +441,11 @@ async def play(voice_client):
 async def on_voice_state_update(member, before, after):
     music_voice_channel = bot.get_channel(music_channel)
     voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
-    if after.channel == music_voice_channel and before.channel != music_voice_channel:
+    if member.id != bot_id and after.channel == music_voice_channel and before.channel != music_voice_channel:
         if voice_client is None:
             await music_voice_channel.connect()
 
-        await play(voice_client)
+        await play()
 
     if len(music_voice_channel.members) <= 1:
         if voice_client and voice_client.is_connected():
