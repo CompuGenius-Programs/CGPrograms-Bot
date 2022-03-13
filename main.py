@@ -10,9 +10,6 @@ import dotenv
 import emoji
 import youtube_dl
 from discord.ext import commands
-from discord_slash import SlashCommand
-from discord_slash import SlashContext
-from discord_slash.utils import manage_commands
 
 dotenv.load_dotenv()
 token = os.getenv("TOKEN")
@@ -130,7 +127,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
 bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
 bot.remove_command('help')
-slash = SlashCommand(bot)
 
 
 def create_embed(title, description, color, footer, image="", *, url="", author="", author_url=""):
@@ -218,8 +214,8 @@ async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_a
     giveaway_messages.remove(giveaway_message)
 
 
-@slash.slash(name="help", description="Get help for using the bot.")
-async def _help(ctx: SlashContext):
+@bot.command(name="help", description="Get help for using the bot.")
+async def _help(ctx):
     description = '''
     A bot created by <@496392770374860811> for his server.
 
@@ -227,8 +223,8 @@ async def _help(ctx: SlashContext):
     • Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
     • Look out for giveaways in <#%s>
 
-    /links | Lists important links
-    /help | Displays this message
+    -links | Lists important links
+    -help | Displays this message
     ''' % (welcome_channel, giveaways_channel)
 
     embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
@@ -262,8 +258,8 @@ async def send_roles(ctx):
         await msg.add_reaction(emoji.emojize(role))
 
 
-@slash.slash(name="links", description="List important CompuGenius Programs links.")
-async def links(ctx: SlashContext):
+@bot.command(name="links", description="List important CompuGenius Programs links.")
+async def links(ctx):
     description = '''
     __CompuGenius Programs__
     **Website:** *<https://www.cgprograms.com>*
@@ -288,18 +284,8 @@ async def links(ctx: SlashContext):
         await bot.get_channel(bot_channel).send(embed=embed)
 
 
-@slash.slash(name="giveaway", description="Start a giveaway!", options=[
-    manage_commands.create_option(name="prize", description="The prize as a string.", option_type=3, required=True),
-    manage_commands.create_option(name="winners", description="The amount of winners as an int.", option_type=3,
-                                  required=True),
-    manage_commands.create_option(name="duration", description="The duration as a string with time letters (d,h,m).",
-                                  option_type=3, required=True),
-    manage_commands.create_option(name="url", description="The url to the prize as a string.", option_type=3,
-                                  required=False),
-    manage_commands.create_option(name="image", description="The url to the image of the prize as a string.",
-                                  option_type=3, required=False),
-])
-async def giveaway(ctx: SlashContext, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
+@bot.command(name="giveaway", description="Start a giveaway!")
+async def giveaway(ctx, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
     if discord.utils.get(bot.get_guild(server).roles, name="Admin") in ctx.author.roles:
         winners = int(winners)
         if winners > 1:
