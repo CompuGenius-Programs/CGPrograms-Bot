@@ -1,8 +1,7 @@
-discord.py
-discord.py[voice]
+py-cord
+py-cord[voice]
 PyNaCl
 youtube_dl
 asyncio
 emoji
 python-dotenv
-discord-py-slash-command

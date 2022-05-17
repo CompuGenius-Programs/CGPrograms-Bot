@@ -9,6 +9,7 @@ import discord
 import dotenv
 import emoji
 import youtube_dl
+from discord import Option
 from discord.ext import commands
 
 dotenv.load_dotenv()
@@ -68,7 +69,6 @@ music_messages = []
 giveaway_messages = []
 
 bot_channel = 776539733660139542
-testing_channel = 784240185713098773
 admin_channel = 776539589111840779
 giveaways_channel = 776506419150454784
 chat_channel = 500124505595838475
@@ -125,8 +125,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
-bot.remove_command('help')
+bot = commands.Bot(intents=discord.Intents.all())
 
 
 def create_embed(title, description, color, footer, image="", *, url="", author="", author_url=""):
@@ -214,8 +213,8 @@ async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_a
     giveaway_messages.remove(giveaway_message)
 
 
-@bot.command(name="help", description="Get help for using the bot.")
-async def _help(ctx):
+@bot.slash_command(name="help", description="Get help for using the bot.", guild_ids=[server])
+async def help(ctx):
     description = '''
     A bot created by <@496392770374860811> for his server.
 
@@ -223,21 +222,17 @@ async def _help(ctx):
     • Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
     • Look out for giveaways in <#%s>
 
-    -links | Lists important links
-    -help | Displays this message
+    /links | Lists important links
+    /help | Displays this message
     ''' % (welcome_channel, giveaways_channel)
 
     embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
                          image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
                          footer="© CompuGenius Programs. All rights reserved.")
-    if ctx.channel == bot.get_channel(testing_channel):
-        await bot.get_channel(testing_channel).send(embed=embed)
-    else:
-        await bot.get_channel(bot_channel).send(embed=embed)
+    await ctx.respond(embed=embed)
 
 
-@bot.command()
-@commands.has_role(762718582006087720)
+@bot.slash_command(guild_ids=[server])
 async def send_roles(ctx):
     display_roles = []
 
@@ -258,7 +253,7 @@ async def send_roles(ctx):
         await msg.add_reaction(emoji.emojize(role))
 
 
-@bot.command(name="links", description="List important CompuGenius Programs links.")
+@bot.slash_command(name="links", description="List important CompuGenius Programs links.", guild_ids=[server])
 async def links(ctx):
     description = '''
     __CompuGenius Programs__
@@ -269,7 +264,7 @@ async def links(ctx):
     __Scifyre League__
     **Website:** https://scifyre.cgprograms.com
     **Steam:** *<https://store.steampowered.com/app/1313660>*
-    **Discord:** *<https://discord.gg/F9xykMJ>*
+    **Discord:** *<https://discord.gg/pPRdKWUu69>*
     **Twitter:** *<https://twitter.com/ScifyreLeague>*
     '''
 
@@ -278,14 +273,12 @@ async def links(ctx):
                          image="https://www.cgprograms.com/images/logo.png",
                          author="CompuGenius Programs", author_url="https://www.cgprograms.com")
 
-    if ctx.channel == bot.get_channel(testing_channel):
-        await bot.get_channel(testing_channel).send(embed=embed)
-    else:
-        await bot.get_channel(bot_channel).send(embed=embed)
+    await ctx.respond(embed=embed)
 
 
-@bot.command(name="giveaway", description="Start a giveaway!")
-async def giveaway(ctx, prize: str, winners: int, duration: str, url: str = "", image: str = ""):
+@bot.slash_command(name="giveaway", description="Start a giveaway!", guild_ids=[server])
+async def giveaway(ctx, prize: Option(str), winners: Option(int, required=True), duration: Option(str, required=True),
+                   url: Option(str) = "", image: Option(str) = ""):
     if discord.utils.get(bot.get_guild(server).roles, name="Admin") in ctx.author.roles:
         winners = int(winners)
         if winners > 1:
@@ -327,10 +320,7 @@ async def giveaway(ctx, prize: str, winners: int, duration: str, url: str = "", 
         embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
                              color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=url)
 
-        if ctx.channel == bot.get_channel(testing_channel):
-            msg = await bot.get_channel(testing_channel).send(embed=embed)
-        else:
-            msg = await bot.get_channel(giveaways_channel).send(embed=embed)
+        msg = await ctx.respond(embed=embed)
         await msg.add_reaction("🎉")
 
         giveaway_messages.append(msg)
@@ -400,7 +390,7 @@ async def on_member_join(member):
     ''' % (member.mention, bot.get_guild(server).name, welcome_channel)
 
     embed = create_embed(title="Welcome %s!" % member.display_name, description=description, color=discord.Color.blue(),
-                         footer="© CompuGenius Programs. All rights reserved.", image=member.avatar_url)
+                         footer="© CompuGenius Programs. All rights reserved.", image=member.avatar.url)
     await bot.get_channel(chat_channel).send(embed=embed)
 
     role = discord.utils.get(bot.get_guild(server).roles, id=just_chillin_role)

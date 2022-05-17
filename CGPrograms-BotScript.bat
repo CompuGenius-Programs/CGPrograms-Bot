@@ -1,1 +1,0 @@
-D:\spect\Programming\Python\Projects\CGPrograms-Bot\venv\Scripts\python.exe D:\spect\Programming\Python\Projects\CGPrograms-Bot\main.py
