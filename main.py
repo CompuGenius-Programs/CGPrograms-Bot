@@ -206,11 +206,11 @@ async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_a
     ''' % ('\n'.join(winners))
 
     embed = create_embed(title=":alarm_clock: GIVEAWAY OVER :alarm_clock:", description=description,
-                         color=discord.Color.green(),
+                         color=discord.Color.red(),
                          footer="Thanks to all who entered and didn't win. Better luck next time!", author=prize)
     await giveaway_message.edit(embed=embed)
 
-    giveaway_messages.remove(giveaway_message)
+    giveaway_messages.remove(giveaway_message.id)
 
 
 @bot.slash_command(name="help", description="Get help for using the bot.", guild_ids=[server])
@@ -260,7 +260,7 @@ async def links(ctx):
     **Website:** *<https://www.cgprograms.com>*
     **Discord:** *<https://discord.gg/4gc5fQf>*
     **Twitter:** *<https://twitter.com/CompuGeniusCode>*
-    
+
     __Scifyre League__
     **Website:** https://scifyre.cgprograms.com
     **Steam:** *<https://store.steampowered.com/app/1313660>*
@@ -307,26 +307,25 @@ async def giveaway(ctx, prize: Option(str), winners: Option(int, required=True),
             return
 
         giveaway_ends_in_seconds = epoch_time + duration_in_seconds
-        giveaway_ends_in_date = time.strftime("%b %dth", time.localtime(giveaway_ends_in_seconds))
-        giveaway_ends_in_time = time.strftime("%I:%M%p", time.localtime(giveaway_ends_in_seconds))
 
-        footer = '''
-        Giveaway ends on %s at %s.
-        ''' % (giveaway_ends_in_date, giveaway_ends_in_time)
+        description += "\nGiveaway ends: <t:%s>" % giveaway_ends_in_seconds
+
+        footer = "Best of luck to all the participants!"
 
         url = url if url else ""
         image = image if image else ""
 
         embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
-                             color=discord.Color.red(), footer=footer, image=image, author=prize, author_url=url)
+                             color=discord.Color.green(), footer=footer, image=image, author=prize, author_url=url)
 
         msg = await ctx.respond(embed=embed)
-        await msg.add_reaction("🎉")
+        message = await msg.original_response()
+        await message.add_reaction("🎉")
 
-        giveaway_messages.append(msg)
+        giveaway_messages.append(message.id)
 
         giveaways[prize] = []
-        await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=msg, prize=prize,
+        await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=message, prize=prize,
                                  winners_amount=winners)
     else:
         await ctx.send(content="You do not have permission to create a giveaway!")
@@ -352,10 +351,11 @@ async def on_raw_reaction_add(payload):
 
     if not user.id == 516792910990016515:
         message = await channel.fetch_message(payload.message_id)
-        if message in giveaway_messages:
+        if message.id in giveaway_messages:
             if emoji_name == ":party_popper:":
                 giveaway_members = giveaways[message.embeds[0].author.name]
                 giveaway_members.append(user.id)
+
 
         elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
             if emoji_name in assignable_roles:
@@ -371,7 +371,7 @@ async def on_raw_reaction_remove(payload):
 
     if not user.id == 516792910990016515:
         message = await channel.fetch_message(payload.message_id)
-        if message in giveaway_messages:
+        if message.id in giveaway_messages:
             if emoji_name == ":party_popper:":
                 giveaway_members = giveaways[message.embeds[0].author.name]
                 giveaway_members.remove(user.id)
