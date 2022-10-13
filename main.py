@@ -59,7 +59,10 @@ assignable_roles = {
     }, ":hammer_and_pick:": {
         "name": "Gamer/Tester",
         "id": 516128704993296385,
-    },
+    }, ":partying_face:" : {
+        "name": "Giveaways",
+        "id": 1029687775135547453,
+    }
 }
 just_chillin_role = 507517011879002112
 
