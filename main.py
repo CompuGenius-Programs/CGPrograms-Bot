@@ -321,8 +321,8 @@ async def giveaway(ctx, prize: Option(str), winners: Option(int, required=True),
         embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
                              color=discord.Color.green(), footer=footer, image=image, author=prize, author_url=url)
 
-        msg = await ctx.respond(embed=embed)
-        message = await msg.original_response()
+        await ctx.respond("Giveaway Started Successfully", ephemeral=True)
+        message = await ctx.send(embed=embed)
         await message.add_reaction("🎉")
 
         giveaway_messages.append(message.id)
