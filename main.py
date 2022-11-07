@@ -277,8 +277,8 @@ __Scifyre League__
 
     embed = create_embed(title="Important CompuGenius Programs Links", description=description,
                          color=discord.Color.purple(), footer="© CompuGenius Programs. All rights reserved.",
-                         image="https://www.cgprograms.com/images/logo.png",
-                         author="CompuGenius Programs", author_url="https://www.cgprograms.com")
+                         image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
+                         author="CompuGenius Programs")
 
     await ctx.respond(embed=embed)
 
