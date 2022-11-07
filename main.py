@@ -59,12 +59,13 @@ assignable_roles = {
     }, ":hammer_and_pick:": {
         "name": "Gamer/Tester",
         "id": 516128704993296385,
-    }, ":partying_face:" : {
+    }, ":partying_face:": {
         "name": "Giveaways",
         "id": 1029687775135547453,
     }
 }
 just_chillin_role = 507517011879002112
+giveaways_role = 1029687775135547453
 
 giveaways = {}
 
@@ -128,14 +129,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-bot = commands.Bot(intents=discord.Intents.all())
+bot = commands.Bot()
 
 
-def create_embed(title, description, color, footer, image="", *, url="", author="", author_url=""):
+def create_embed(title, description, color, footer, image="", *, url="", author=""):
     embed = discord.Embed(title=title, description=description, url=url, color=color)
     embed.set_footer(text=footer)
     embed.set_thumbnail(url=image)
-    embed.set_author(name=author, url=author_url)
+    embed.url = url
+    embed.set_author(name=author)
     return embed
 
 
@@ -185,7 +187,7 @@ async def get_new_winner(giveaway_members, winner_ids):
     return winner_id
 
 
-async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_amount):
+async def countdown_giveaway(time_in_seconds, giveaway_message, prize, url, winners_amount):
     await asyncio.sleep(time_in_seconds)
 
     winner_ids = []
@@ -203,31 +205,33 @@ async def countdown_giveaway(time_in_seconds, giveaway_message, prize, winners_a
         winners.append("<@%s>" % winner_id)
 
     description = '''
-    The giveaway is over!
-    Congrats to the winners:
-    %s
-    ''' % ('\n'.join(winners))
+The giveaway is over!
+Congrats to the winners:
+%s
+''' % ('\n'.join(winners))
 
-    embed = create_embed(title=":alarm_clock: GIVEAWAY OVER :alarm_clock:", description=description,
-                         color=discord.Color.red(),
-                         footer="Thanks to all who entered and didn't win. Better luck next time!", author=prize)
-    await giveaway_message.edit(embed=embed)
+    author = emoji.emojize(":alarm_clock: GIVEAWAY OVER :alarm_clock:")
+
+    embed = create_embed(title=prize, description=description, color=discord.Color.red(),
+                         footer="Thanks to all who entered and didn't win. Better luck next time!", url=url,
+                         author=author)
+    await giveaway_message.edit("%s: You won!" % ', '.join(winners), embed=embed)
 
     giveaway_messages.remove(giveaway_message.id)
 
 
-@bot.slash_command(name="help", description="Get help for using the bot.", guild_ids=[server])
-async def help(ctx):
+@bot.slash_command(name="help", description="Get help for using the bot.")
+async def _help(ctx):
     description = '''
-    A bot created by <@496392770374860811> for his server.
+A bot created by <@496392770374860811> for his server.
 
-    • Add roles to yourself in <#%s>
-    • Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
-    • Look out for giveaways in <#%s>
+• Add roles to yourself in <#%s>
+• Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
+• Look out for giveaways in <#%s>
 
-    /links | Lists important links
-    /help | Displays this message
-    ''' % (welcome_channel, giveaways_channel)
+/links | Lists important links
+/help | Displays this message
+''' % (welcome_channel, giveaways_channel)
 
     embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
                          image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
@@ -235,7 +239,7 @@ async def help(ctx):
     await ctx.respond(embed=embed)
 
 
-@bot.slash_command(guild_ids=[server])
+@bot.slash_command()
 async def send_roles(ctx):
     display_roles = []
 
@@ -243,9 +247,9 @@ async def send_roles(ctx):
         display_roles.append("%s    -   %s" % (emoji.emojize(role), assignable_roles[role]["name"]))
 
     description = '''
-    Click the reactions below corresponding to the roles you want.
+Click the reactions below corresponding to the roles you want.
 
-    %s
+%s
     ''' % '\n'.join(display_roles)
 
     embed = create_embed(title="Add roles", description=description, color=discord.Color.blurple(),
@@ -256,20 +260,20 @@ async def send_roles(ctx):
         await msg.add_reaction(emoji.emojize(role))
 
 
-@bot.slash_command(name="links", description="List important CompuGenius Programs links.", guild_ids=[server])
+@bot.slash_command(name="links", description="List important CompuGenius Programs links.")
 async def links(ctx):
     description = '''
-    __CompuGenius Programs__
-    **Website:** *<https://www.cgprograms.com>*
-    **Discord:** *<https://discord.gg/4gc5fQf>*
-    **Twitter:** *<https://twitter.com/CompuGeniusCode>*
+__CompuGenius Programs__
+**Website:** *<https://www.cgprograms.com>*
+**Discord:** *<https://discord.gg/4gc5fQf>*
+**Twitter:** *<https://twitter.com/CompuGeniusCode>*
 
-    __Scifyre League__
-    **Website:** https://scifyre.cgprograms.com
-    **Steam:** *<https://store.steampowered.com/app/1313660>*
-    **Discord:** *<https://discord.gg/pPRdKWUu69>*
-    **Twitter:** *<https://twitter.com/ScifyreLeague>*
-    '''
+__Scifyre League__
+**Website:** https://scifyre.cgprograms.com
+**Steam:** *<https://store.steampowered.com/app/1313660>*
+**Discord:** *<https://discord.gg/pPRdKWUu69>*
+**Twitter:** *<https://twitter.com/ScifyreLeague>*
+'''
 
     embed = create_embed(title="Important CompuGenius Programs Links", description=description,
                          color=discord.Color.purple(), footer="© CompuGenius Programs. All rights reserved.",
@@ -279,21 +283,21 @@ async def links(ctx):
     await ctx.respond(embed=embed)
 
 
-@bot.slash_command(name="giveaway", description="Start a giveaway!", guild_ids=[server])
+@bot.slash_command(name="giveaway", description="Start a giveaway!")
 async def giveaway(ctx, prize: Option(str), winners: Option(int, required=True), duration: Option(str, required=True),
                    url: Option(str) = "", image: Option(str) = ""):
     if discord.utils.get(bot.get_guild(server).roles, name="Admin") in ctx.author.roles:
         winners = int(winners)
         if winners > 1:
             description = '''
-            Click the :tada: to be entered into a giveaway!
-            There are %d winners!
-            ''' % winners
+Click the :tada: to be entered into a giveaway!
+There are %d winners!
+''' % winners
         elif winners == 1:
             description = '''
-            Click the :tada: to be entered into a giveaway!
-            There is %d winner!
-            ''' % winners
+Click the :tada: to be entered into a giveaway!
+There is %d winner!
+''' % winners
         else:
             await ctx.send(content="ERROR! Must have at least 1 winner!")
             return
@@ -318,17 +322,21 @@ async def giveaway(ctx, prize: Option(str), winners: Option(int, required=True),
         url = url if url else ""
         image = image if image else ""
 
-        embed = create_embed(title=":partying_face: GIVEAWAY :partying_face:", description=description,
-                             color=discord.Color.green(), footer=footer, image=image, author=prize, author_url=url)
+        if url != "":
+            prize = "%s [Click to Open Prize Page]" % prize
+        author = emoji.emojize(":partying_face: GIVEAWAY :partying_face:")
+
+        embed = create_embed(title=prize, description=description, color=discord.Color.green(), footer=footer,
+                             image=image, url=url, author=author)
 
         await ctx.respond("Giveaway Started Successfully", ephemeral=True)
-        message = await ctx.send(embed=embed)
+        message = await ctx.send("<@&%s>: New Giveaway!" % giveaways_role, embed=embed)
         await message.add_reaction("🎉")
 
         giveaway_messages.append(message.id)
 
         giveaways[prize] = []
-        await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=message, prize=prize,
+        await countdown_giveaway(time_in_seconds=duration_in_seconds, giveaway_message=message, prize=prize, url=url,
                                  winners_amount=winners)
     else:
         await ctx.send(content="You do not have permission to create a giveaway!")
@@ -356,9 +364,8 @@ async def on_raw_reaction_add(payload):
         message = await channel.fetch_message(payload.message_id)
         if message.id in giveaway_messages:
             if emoji_name == ":party_popper:":
-                giveaway_members = giveaways[message.embeds[0].author.name]
+                giveaway_members = giveaways[message.embeds[0].title]
                 giveaway_members.append(user.id)
-
 
         elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
             if emoji_name in assignable_roles:
@@ -376,7 +383,7 @@ async def on_raw_reaction_remove(payload):
         message = await channel.fetch_message(payload.message_id)
         if message.id in giveaway_messages:
             if emoji_name == ":party_popper:":
-                giveaway_members = giveaways[message.embeds[0].author.name]
+                giveaway_members = giveaways[message.embeds[0].title]
                 giveaway_members.remove(user.id)
 
         elif message.channel == bot.get_channel(welcome_channel) and message.author == bot.user:
@@ -387,10 +394,10 @@ async def on_raw_reaction_remove(payload):
 @bot.event
 async def on_member_join(member):
     description = '''
-    Welcome %s to the %s server!
-    Please make sure to check out <#%d>.
-    Enjoy your stay!
-    ''' % (member.mention, bot.get_guild(server).name, welcome_channel)
+Welcome %s to the %s server!
+Please make sure to check out <#%d>.
+Enjoy your stay!
+''' % (member.mention, bot.get_guild(server).name, welcome_channel)
 
     embed = create_embed(title="Welcome %s!" % member.display_name, description=description, color=discord.Color.blue(),
                          footer="© CompuGenius Programs. All rights reserved.", image=member.avatar.url)
