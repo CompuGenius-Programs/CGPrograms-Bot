@@ -132,13 +132,67 @@ class YTDLSource(discord.PCMVolumeTransformer):
 bot = commands.Bot()
 
 
-def create_embed(title, description, color, footer, image="", *, url="", author=""):
-    embed = discord.Embed(title=title, description=description, url=url, color=color)
-    embed.set_footer(text=footer)
-    embed.set_thumbnail(url=image)
-    embed.url = url
-    embed.set_author(name=author)
-    return embed
+@bot.slash_command(name="help", description="Get help for using the bot.")
+async def _help(ctx):
+    description = '''
+A bot created by <@496392770374860811> for his server.
+
+• Add roles to yourself in <#%s>
+• Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
+• Look out for giveaways in <#%s>
+
+/links | Lists important links
+/help | Displays this message
+''' % (welcome_channel, giveaways_channel)
+
+    embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
+                         image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
+                         footer="© CompuGenius Programs. All rights reserved.")
+    await ctx.respond(embed=embed)
+
+
+@bot.slash_command(name="links", description="List important CompuGenius Programs links.")
+async def links(ctx):
+    description = '''
+__CompuGenius Programs__
+**Website:** *<https://www.cgprograms.com>*
+**Discord:** *<https://discord.gg/4gc5fQf>*
+**Twitter:** *<https://twitter.com/CompuGeniusCode>*
+
+__Scifyre League__
+**Website:** https://scifyre.cgprograms.com
+**Steam:** *<https://store.steampowered.com/app/1313660>*
+**Discord:** *<https://discord.gg/pPRdKWUu69>*
+**Twitter:** *<https://twitter.com/ScifyreLeague>*
+'''
+
+    embed = create_embed(title="CompuGenius Programs", description=description, color=discord.Color.purple(),
+                         footer="© CompuGenius Programs. All rights reserved.",
+                         image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
+                         author="Important CompuGenius Programs Links")
+
+    await ctx.respond(embed=embed)
+
+
+@bot.slash_command()
+async def send_roles(ctx):
+    display_roles = []
+
+    for role in assignable_roles:
+        display_roles.append("%s    -   %s" % (emoji.emojize(role), assignable_roles[role]["name"]))
+
+    description = '''
+Click the reactions below corresponding to the roles you want.
+
+%s
+    ''' % '\n'.join(display_roles)
+
+    embed = create_embed(title="Add roles", description=description, color=discord.Color.blurple(),
+                         footer="© CompuGenius Programs. All rights reserved.")
+    msg = await bot.get_channel(welcome_channel).send(embed=embed)
+
+    for role in assignable_roles:
+        await msg.add_reaction(emoji.emojize(role))
 
 
 async def add_roles(emoji_name, user):
@@ -166,121 +220,6 @@ async def remove_roles(emoji_name, user):
 
     if just_chillin not in user.roles and len(user.roles) <= 1:
         await user.add_roles(just_chillin, reason="User has no self-assigned roles.")
-
-
-async def get_url():
-    url = random.choice(urls)
-    try:
-        player = await YTDLSource.from_url(url)
-        return player, url
-    except youtube_dl.utils.DownloadError or youtube_dl.utils.ExtractorError:
-        urls.remove(url)
-        await bot.get_channel(admin_channel).send("**<@496392770374860811> BAD MUSIC URL:** *%s*" % url)
-        return await get_url()
-
-
-async def get_new_winner(giveaway_members, winner_ids):
-    winner_id = random.choice(giveaway_members)
-    not_new_winner = winner_id in winner_ids
-    while not_new_winner:
-        return await get_new_winner(giveaway_members, winner_ids)
-    return winner_id
-
-
-async def countdown_giveaway(time_in_seconds, giveaway_message, prize, url, winners_amount):
-    await asyncio.sleep(time_in_seconds)
-
-    winner_ids = []
-    giveaway_members = giveaways[prize]
-    if winners_amount >= len(giveaway_members):
-        for winner in giveaway_members:
-            winner_ids.append(winner)
-    else:
-        for winner in range(winners_amount):
-            winner_id = await get_new_winner(giveaway_members, winner_ids)
-            winner_ids.append(winner_id)
-
-    winners = []
-    for winner_id in winner_ids:
-        winners.append("<@%s>" % winner_id)
-
-    description = '''
-The giveaway is over!
-Congrats to the winners:
-%s
-''' % ('\n'.join(winners))
-
-    author = emoji.emojize(":alarm_clock: GIVEAWAY OVER :alarm_clock:")
-
-    embed = create_embed(title=prize, description=description, color=discord.Color.red(),
-                         footer="Thanks to all who entered and didn't win. Better luck next time!", url=url,
-                         author=author)
-    await giveaway_message.edit("%s: You won!" % ', '.join(winners), embed=embed)
-
-    giveaway_messages.remove(giveaway_message.id)
-
-
-@bot.slash_command(name="help", description="Get help for using the bot.")
-async def _help(ctx):
-    description = '''
-A bot created by <@496392770374860811> for his server.
-
-• Add roles to yourself in <#%s>
-• Join the <#684128787180552205> voice chat to listen to lofi beats while programming and studying.
-• Look out for giveaways in <#%s>
-
-/links | Lists important links
-/help | Displays this message
-''' % (welcome_channel, giveaways_channel)
-
-    embed = create_embed(title="CGPrograms Bot Help", description=description, color=discord.Color.green(),
-                         image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
-                         footer="© CompuGenius Programs. All rights reserved.")
-    await ctx.respond(embed=embed)
-
-
-@bot.slash_command()
-async def send_roles(ctx):
-    display_roles = []
-
-    for role in assignable_roles:
-        display_roles.append("%s    -   %s" % (emoji.emojize(role), assignable_roles[role]["name"]))
-
-    description = '''
-Click the reactions below corresponding to the roles you want.
-
-%s
-    ''' % '\n'.join(display_roles)
-
-    embed = create_embed(title="Add roles", description=description, color=discord.Color.blurple(),
-                         footer="© CompuGenius Programs. All rights reserved.")
-    msg = await bot.get_channel(welcome_channel).send(embed=embed)
-
-    for role in assignable_roles:
-        await msg.add_reaction(emoji.emojize(role))
-
-
-@bot.slash_command(name="links", description="List important CompuGenius Programs links.")
-async def links(ctx):
-    description = '''
-__CompuGenius Programs__
-**Website:** *<https://www.cgprograms.com>*
-**Discord:** *<https://discord.gg/4gc5fQf>*
-**Twitter:** *<https://twitter.com/CompuGeniusCode>*
-
-__Scifyre League__
-**Website:** https://scifyre.cgprograms.com
-**Steam:** *<https://store.steampowered.com/app/1313660>*
-**Discord:** *<https://discord.gg/pPRdKWUu69>*
-**Twitter:** *<https://twitter.com/ScifyreLeague>*
-'''
-
-    embed = create_embed(title="Important CompuGenius Programs Links", description=description,
-                         color=discord.Color.purple(), footer="© CompuGenius Programs. All rights reserved.",
-                         image="https://www.cgprograms.com/images/logo.png", url="https://www.cgprograms.com",
-                         author="CompuGenius Programs")
-
-    await ctx.respond(embed=embed)
 
 
 @bot.slash_command(name="giveaway", description="Start a giveaway!")
@@ -330,7 +269,8 @@ There is %d winner!
                              image=image, url=url, author=author)
 
         await ctx.respond("Giveaway Started Successfully", ephemeral=True)
-        message = await ctx.send("<@&%s>: New Giveaway!" % giveaways_role, embed=embed)
+        message = await ctx.send("<@&%s> (Add or Remove role in <#%s>): New Giveaway!" %
+                                 (giveaways_role, welcome_channel), embed=embed)
         await message.add_reaction("🎉")
 
         giveaway_messages.append(message.id)
@@ -342,15 +282,81 @@ There is %d winner!
         await ctx.send(content="You do not have permission to create a giveaway!")
 
 
-@bot.event
-async def on_ready():
-    print('Logged in as')
-    print(bot.user.name)
-    print(bot.user.id)
-    print('------')
+async def countdown_giveaway(time_in_seconds, giveaway_message, prize, url, winners_amount):
+    await asyncio.sleep(time_in_seconds)
 
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
-                                                        name="the CompuGenius Programs server. Type /help."))
+    winner_ids = []
+    giveaway_members = giveaways[prize]
+    if winners_amount >= len(giveaway_members):
+        for winner in giveaway_members:
+            winner_ids.append(winner)
+    else:
+        for winner in range(winners_amount):
+            winner_id = await get_new_winner(giveaway_members, winner_ids)
+            winner_ids.append(winner_id)
+
+    winners = []
+    for winner_id in winner_ids:
+        winners.append("<@%s>" % winner_id)
+
+    description = '''
+The giveaway is over!
+Congrats to the winners:
+%s
+''' % ('\n'.join(winners))
+
+    author = emoji.emojize(":alarm_clock: GIVEAWAY OVER :alarm_clock:")
+
+    embed = create_embed(title=prize, description=description, color=discord.Color.red(),
+                         footer="Thanks to all who entered and didn't win. Better luck next time!", url=url,
+                         author=author)
+    await giveaway_message.edit("%s: You won!" % ', '.join(winners), embed=embed)
+
+    giveaway_messages.remove(giveaway_message.id)
+
+
+async def get_new_winner(giveaway_members, winner_ids):
+    winner_id = random.choice(giveaway_members)
+    not_new_winner = winner_id in winner_ids
+    while not_new_winner:
+        return await get_new_winner(giveaway_members, winner_ids)
+    return winner_id
+
+
+async def play():
+    player, url = await get_url()
+
+    voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
+
+    if voice_client and not voice_client.is_playing() and voice_client.is_connected():
+        for message in music_messages:
+            await message.delete()
+            music_messages.remove(message)
+
+        async with bot.get_channel(bot_channel).typing():
+            voice_client.play(player, after=lambda e: bot.loop.create_task(play()))
+        msg = await bot.get_channel(bot_channel).send("**Playing now:** *%s*" % url)
+        music_messages.append(msg)
+
+
+async def get_url():
+    url = random.choice(urls)
+    try:
+        player = await YTDLSource.from_url(url)
+        return player, url
+    except youtube_dl.utils.DownloadError or youtube_dl.utils.ExtractorError:
+        urls.remove(url)
+        await bot.get_channel(admin_channel).send("**<@496392770374860811> BAD MUSIC URL:** *%s*" % url)
+        return await get_url()
+
+
+def create_embed(title, description, color, footer, image="", *, url="", author=""):
+    embed = discord.Embed(title=title, description=description, url=url, color=color)
+    embed.set_footer(text=footer)
+    embed.set_thumbnail(url=image)
+    embed.url = url
+    embed.set_author(name=author)
+    return embed
 
 
 @bot.event
@@ -392,38 +398,6 @@ async def on_raw_reaction_remove(payload):
 
 
 @bot.event
-async def on_member_join(member):
-    description = '''
-Welcome %s to the %s server!
-Please make sure to check out <#%d>.
-Enjoy your stay!
-''' % (member.mention, bot.get_guild(server).name, welcome_channel)
-
-    embed = create_embed(title="Welcome %s!" % member.display_name, description=description, color=discord.Color.blue(),
-                         footer="© CompuGenius Programs. All rights reserved.", image=member.avatar.url)
-    await bot.get_channel(chat_channel).send(embed=embed)
-
-    role = discord.utils.get(bot.get_guild(server).roles, id=just_chillin_role)
-    await member.add_roles(role, reason="New member joined.")
-
-
-async def play():
-    player, url = await get_url()
-
-    voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
-
-    if voice_client and not voice_client.is_playing() and voice_client.is_connected():
-        for message in music_messages:
-            await message.delete()
-            music_messages.remove(message)
-
-        async with bot.get_channel(bot_channel).typing():
-            voice_client.play(player, after=lambda e: bot.loop.create_task(play()))
-        msg = await bot.get_channel(bot_channel).send("**Playing now:** *%s*" % url)
-        music_messages.append(msg)
-
-
-@bot.event
 async def on_voice_state_update(member, before, after):
     music_voice_channel = bot.get_channel(music_channel)
     voice_client = discord.utils.get(bot.voice_clients, guild=bot.get_guild(server))
@@ -439,6 +413,33 @@ async def on_voice_state_update(member, before, after):
             for message in music_messages:
                 await message.delete()
                 music_messages.remove(message)
+
+
+@bot.event
+async def on_member_join(member):
+    description = '''
+Welcome %s to the %s server!
+Please make sure to check out <#%d>.
+Enjoy your stay!
+''' % (member.mention, bot.get_guild(server).name, welcome_channel)
+
+    embed = create_embed(title="Welcome %s!" % member.display_name, description=description, color=discord.Color.blue(),
+                         footer="© CompuGenius Programs. All rights reserved.", image=member.avatar.url)
+    await bot.get_channel(chat_channel).send(embed=embed)
+
+    role = discord.utils.get(bot.get_guild(server).roles, id=just_chillin_role)
+    await member.add_roles(role, reason="New member joined.")
+
+
+@bot.event
+async def on_ready():
+    print('Logged in as')
+    print(bot.user.name)
+    print(bot.user.id)
+    print('------')
+
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
+                                                        name="the CompuGenius Programs server. Type /help."))
 
 
 bot.run(token)
