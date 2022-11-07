@@ -262,7 +262,7 @@ There is %d winner!
         image = image if image else ""
 
         if url != "":
-            prize = "%s [Click to Open Prize Page]" % prize
+            prize = "%s\n[Click to Open Prize Page]" % prize
         author = emoji.emojize(":partying_face: GIVEAWAY :partying_face:")
 
         embed = create_embed(title=prize, description=description, color=discord.Color.green(), footer=footer,
