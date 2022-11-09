@@ -381,10 +381,9 @@ async def on_raw_reaction_add(payload):
 async def on_raw_reaction_remove(payload):
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
-    guild = bot.get_guild(payload.guild_id)
-    user = guild.get_member(payload.user_id)
+    user = payload.member
 
-    if not user.id == 516792910990016515:
+    if not user == bot.user:
         message = await channel.fetch_message(payload.message_id)
         if message.id in giveaway_messages:
             if emoji_name == ":party_popper:":
