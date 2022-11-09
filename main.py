@@ -310,7 +310,7 @@ Congrats to the winners:
     embed = create_embed(title=prize, description=description, color=discord.Color.red(),
                          footer="Thanks to all who entered and didn't win. Better luck next time!", url=url,
                          author=author)
-    await giveaway_message.edit("%s: You won!" % ', '.join(winners), embed=embed)
+    await giveaway_message.edit("%s - You won!" % ', '.join(winners), embed=embed)
 
     giveaway_messages.remove(giveaway_message.id)
 
@@ -363,10 +363,9 @@ def create_embed(title, description, color, footer, image="", *, url="", author=
 async def on_raw_reaction_add(payload):
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
-    guild = bot.get_guild(payload.guild_id)
-    user = guild.get_member(payload.user_id)
+    user = payload.member
 
-    if not user.id == 516792910990016515:
+    if not user == bot.user:
         message = await channel.fetch_message(payload.message_id)
         if message.id in giveaway_messages:
             if emoji_name == ":party_popper:":
