@@ -129,7 +129,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-bot = commands.Bot()
+bot = commands.Bot(intents=discord.Intents.all())
 
 
 @bot.slash_command(name="help", description="Get help for using the bot.")
@@ -363,7 +363,7 @@ def create_embed(title, description, color, footer, image="", *, url="", author=
 async def on_raw_reaction_add(payload):
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
-    user = payload.member
+    user = bot.get_user(payload.user_id)
 
     if not user == bot.user:
         message = await channel.fetch_message(payload.message_id)
@@ -381,7 +381,7 @@ async def on_raw_reaction_add(payload):
 async def on_raw_reaction_remove(payload):
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
-    user = payload.member
+    user = bot.get_user(payload.user_id)
 
     if not user == bot.user:
         message = await channel.fetch_message(payload.message_id)
