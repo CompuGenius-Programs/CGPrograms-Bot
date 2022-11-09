@@ -363,7 +363,8 @@ def create_embed(title, description, color, footer, image="", *, url="", author=
 async def on_raw_reaction_add(payload):
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
-    user = bot.get_user(payload.user_id)
+    guild = bot.get_guild(payload.guild_id)
+    user = guild.get_member(payload.user_id)
 
     if not user == bot.user:
         message = await channel.fetch_message(payload.message_id)
@@ -381,7 +382,8 @@ async def on_raw_reaction_add(payload):
 async def on_raw_reaction_remove(payload):
     emoji_name = emoji.demojize(payload.emoji.name)
     channel = bot.get_channel(payload.channel_id)
-    user = bot.get_user(payload.user_id)
+    guild = bot.get_guild(payload.guild_id)
+    user = guild.get_member(payload.user_id)
 
     if not user == bot.user:
         message = await channel.fetch_message(payload.message_id)
